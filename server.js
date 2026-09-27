@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const { Pool, types } = require('pg');
 
 // Return DATE columns as plain 'YYYY-MM-DD' strings so no timezone shifting happens.
@@ -51,7 +52,29 @@ if (process.env.APP_PASSWORD) {
   });
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
+// Find the page files. They normally live in /public, but if they were uploaded
+// to the top of the repo instead, serve them from there.
+const PAGE_FILES = ['index.html', 'app.js', 'styles.css'];
+const pageDir = [path.join(__dirname, 'public'), __dirname]
+  .find((dir) => fs.existsSync(path.join(dir, 'index.html')));
+if (pageDir) {
+  console.log(`Serving pages from ${pageDir}`);
+  // When serving from the repo root, expose only the page files, never server code or settings.
+  if (pageDir === __dirname) {
+    app.use((req, res, next) => {
+      const ok = req.path === '/' || PAGE_FILES.includes(req.path.slice(1))
+        || req.path.startsWith('/api') || req.path === '/health';
+      return ok ? next() : res.status(404).send('Not found');
+    });
+  }
+  app.use(express.static(pageDir, { index: 'index.html', dotfiles: 'deny' }));
+} else {
+  const missing = PAGE_FILES.map((f) => `public/${f}`).join(', ');
+  console.error(`Page files not found. Add these to your repo: ${missing}`);
+  app.get('/', (req, res) => res.status(500).send(
+    `<p style="font-family:sans-serif;max-width:40em;margin:3em auto">The server is running, but the page files are missing.
+     Add a folder named <b>public</b> to your GitHub repo containing <b>index.html</b>, <b>app.js</b> and <b>styles.css</b>, then redeploy.</p>`));
+}
 
 // Until the database is ready, API calls return a clear explanation instead of crashing.
 app.use('/api', (req, res, next) => {

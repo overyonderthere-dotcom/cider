@@ -35,6 +35,7 @@ Open the app service in Railway and check **Deployments > View logs**. The app e
 - **"Cannot reach the database"**: confirm the Postgres service shows as running in the same project. The app retries on its own every few seconds.
 - **Build fails with "no start command" or "could not determine how to build"**: `package.json` is inside a subfolder. Move the files to the top of the repo, or set **Settings > Root Directory** to that folder.
 - **"Application failed to respond"**: under **Settings > Networking**, delete the domain and generate it again without typing a port, so Railway uses the port it assigns.
+- **"Cannot GET /" or "page files are missing"**: the `public` folder (with `index.html`, `app.js`, `styles.css`) didn't upload. Add it to the repo and redeploy.
 - Visit `/health` on your domain. It shows `ok` when everything is connected.
 
 ## Run locally (optional)
